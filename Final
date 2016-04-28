@@ -1,0 +1,119 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+int read_array(FILE *fp, char *p_A[])
+{
+	int i;
+	char var;
+	int size = 0;
+	while(fscanf(fp,"%s",&var)==1) 		// reads file and counts length/size
+	{
+		size+=1;
+	}
+	
+	rewind(fp); 						// puts pointer back at the top of page
+	
+	*p_A = calloc(size, sizeof(char));	// initializes dynamic memory array
+	for(i = 0; i < size; i++)
+	{
+		fscanf(fp,"%s",&((*p_A)[i]));	// inputs file values in array p_A
+	}
+	
+	return size;
+}
+
+int reader(const char *A, int count)
+{
+   int seq = 0;
+   if(A[count] == 'C' && count%3 == 0) // find 'C' at the start of a codon
+   {
+      count ++;
+      if(A[count] == 'A')  // find subsuquent 'A'
+      {
+         count++;
+         if(A[count] == 'G')  // found whole CAG codon; add 1 to possible read length
+         {
+            seq++;
+            if(A[count + 1] == 'C')
+            {
+               int add = reader(A, count);
+               seq = seq + add;
+            }
+            
+            return seq;
+         }
+      }
+   }
+   
+   else
+   {
+      if(A[count] != '/0')
+      {
+         count++;
+         int spot = reader(A,count);
+      }
+      else
+      {
+         return 0;
+      }
+   }
+}
+
+int main(int argc, char *argv[])
+{
+   // find 'C' and %3 to identify position/location as start of codon
+   // if true, identify if 'A' and 'G' follows
+   //Only input region where you would find the repeats (chrm 4 ~= 190million bp)
+   char *A; // sequence array
+   
+   if (argc < 2)
+   {
+		fprintf(stderr, "Usage: main2 data_file.txt \n");
+		return 1;
+	}
+	
+	char *ptr_file = argv[1];
+
+	FILE *fp = fopen(ptr_file, "rb");
+	if (fp == NULL)
+		return 1;
+		
+   int size = read_array(fp, &A);
+	if (size < 0)
+	{
+		return 1;
+	}
+	
+   printf("Sequence: \n%s\n", A);
+   printf("Sequence length: %d bases\n",size);
+   
+   //Risk Identification Section
+   int count = reader(A, 0);
+   printf("Amount of CAG repeats: %d\n", count);
+   if (count <15)
+   {
+      printf("The CAG count is less than 15. There was likely an error in sequencing\n");
+   }
+   else if (count<=26)
+   {
+      printf("Normal amount of repeats\n"); return 0;
+   }
+   else if(count<= 35)
+   {
+      printf("Some risk of HD to children\n"); return 0;
+   }
+   else if (count <=39)
+   {
+      printf("Some risk of HD to you\n"); return 0;
+   }
+   else
+   {
+      printf("Too many repeats - the individual will develop Huntington's Disease\n");
+   }
+   
+   free(A);
+	fclose(fp);
+	
+   return 0;
+}
